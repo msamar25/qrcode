@@ -1,0 +1,43 @@
+{
+  "storage": [
+    [
+      {
+        "floor": 1,
+        "rack": 1,
+        "previous": null,
+        "current": "QR101",
+        "next": "QR102"
+      },
+      {
+        "floor": 1,
+        "rack": 1,
+        "previous": "QR101",
+        "current": "QR102",
+        "next": "QR103"
+      },
+      {
+        "floor": 1,
+        "rack": 2,
+        "previous": "QR102",
+        "current": "QR103",
+        "next": null
+      }
+    ],
+    [
+      {
+        "floor": 2,
+        "rack": 1,
+        "previous": null,
+        "current": "QR201",
+        "next": "QR202"
+      },
+      {
+        "floor": 2,
+        "rack": 2,
+        "previous": "QR201",
+        "current": "QR202",
+        "next": null
+      }
+    ]
+  ]
+}
