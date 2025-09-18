@@ -18,8 +18,8 @@
 <body>
   <h1>QR Code Scanner</h1>
 
-  <button id="startBtn">Start Scanning</button>
-  <button id="stopBtn" disabled>Stop Scanning</button>
+  <button id="startBtn">Start Camera Scan</button>
+  <button id="stopBtn" disabled>Stop Camera Scan</button>
 
   <div id="reader"></div>
 
@@ -33,22 +33,20 @@
     let qrScanner;
     let scanning = false;
     let jsonData = [];
-    let lastTwo = []; // store last 2 scanned QR codes
+    let lastTwo = []; // last 2 scans
+    let lastScanTime = 0;
+    const scanDelay = 30000; // 30 seconds
 
     // Load JSON data
     fetch("https://msamar25.github.io/qrcode/storage.json")
       .then(res => res.json())
-      .then(data => {
-        jsonData = data;
-        console.log("JSON loaded:", jsonData);
-      })
+      .then(data => { jsonData = data; console.log("JSON loaded:", jsonData); })
       .catch(err => console.error("Failed to load storage.json:", err));
 
-    // Start scanning
+    // Start camera scan
     document.getElementById("startBtn").addEventListener("click", () => {
       if (!scanning) {
         qrScanner = new Html5Qrcode("reader");
-
         qrScanner.start(
           { facingMode: { exact: "environment" } },
           { fps: 10, qrbox: 250 },
@@ -58,91 +56,75 @@
           scanning = true;
           document.getElementById("stopBtn").disabled = false;
           document.getElementById("startBtn").disabled = true;
-          setStatus("Scanning started...", "matched");
-        }).catch(err => {
-          console.warn("Rear camera not available, trying front:", err);
-          qrScanner.start(
-            { facingMode: "user" },
-            { fps: 10, qrbox: 250 },
-            qrCodeSuccess,
-            qrCodeError
-          ).then(() => {
-            scanning = true;
-            document.getElementById("stopBtn").disabled = false;
-            document.getElementById("startBtn").disabled = true;
-            setStatus("Scanning started (front camera)...", "matched");
-          }).catch(e => {
-            console.error("Camera start error:", e);
-            setStatus("Camera start failed!", "not-matched");
-          });
-        });
+          setStatus("Camera scanning started...", "matched");
+        }).catch(err => alert("Camera not available or permission denied."));
       }
     });
 
-    // Stop scanning
+    // Stop camera scan
     document.getElementById("stopBtn").addEventListener("click", () => {
       if (qrScanner && scanning) {
         qrScanner.stop().then(() => {
           scanning = false;
           document.getElementById("startBtn").disabled = false;
           document.getElementById("stopBtn").disabled = true;
-          setStatus("Scanning stopped.", "not-matched");
-        }).catch(err => console.error("Stop error:", err));
+          setStatus("Camera scanning stopped.", "not-matched");
+        });
       }
     });
 
-    // On QR success
+    // Success handler for camera scan
     function qrCodeSuccess(decodedText) {
+      const now = Date.now();
+      if (now - lastScanTime < scanDelay) return; // ignore if within 30 seconds
+      lastScanTime = now;
+      processScan(decodedText);
+    }
+
+    function qrCodeError(errorMessage) { console.log("QR Error:", errorMessage); }
+
+    // Process scan and update history
+    function processScan(decodedText) {
       addToHistory(decodedText);
       validateQR(decodedText);
     }
 
-    function qrCodeError(errorMessage) {
-      console.log("QR Error:", errorMessage);
-    }
-
-    // Add scan to history
     function addToHistory(text) {
-      if (lastTwo.length >= 2) {
-        lastTwo.shift(); // keep only last 2
-      }
+      if (lastTwo.length >= 2) lastTwo.shift();
       lastTwo.push(text);
 
-      let list = document.getElementById("scans");
       let li = document.createElement("li");
       li.innerText = new Date().toLocaleTimeString() + " → " + text;
-      list.prepend(li);
+      document.getElementById("scans").prepend(li);
     }
 
-    // Validate scanned QR against JSON with sequence check
+    // Validate QR sequence and display full rack details
     function validateQR(scanned) {
-      let record = jsonData.find(item => item.qr === scanned);
-
-      if (!record) {
-        setStatus("❌ QR Code not found in JSON data.", "not-matched");
-        return;
-      }
+      const record = jsonData.find(item => item.qr === scanned);
+      if (!record) return setStatus("❌ QR not found in JSON.", "not-matched");
 
       if (lastTwo.length < 2) {
-        setStatus(`✅ First scan: ${scanned} (Floor: ${record.floor}, Rack: ${record.rack})`, "matched");
-        return;
+        return setStatus(`✅ First scan: ${scanned}\nFloor: ${record.floor}, Rack: ${record.rack}`, "matched");
       }
 
-      let prevScan = lastTwo[lastTwo.length - 2];
-      let lastScan = lastTwo[lastTwo.length - 1];
+      const prevScan = lastTwo[lastTwo.length - 2];
+      const prevRecord = jsonData.find(item => item.qr === prevScan);
 
-      if (record.previous === prevScan && record.qr === lastScan) {
-        setStatus(`✅ Matched sequence! Current: ${record.qr}, Previous: ${record.previous}, Next: ${record.next}`, "matched");
+      if (!prevRecord) return setStatus("❌ Previous QR not found.", "not-matched");
+
+      if (record.previous === prevScan) {
+        setStatus(`✅ Forward Sequence OK!\nFloor: ${record.floor}, Rack: ${record.rack}\nPrevious: ${record.previous}, Next: ${record.next}`, "matched");
+      } else if (record.next === prevScan) {
+        setStatus(`✅ Backward Sequence OK!\nFloor: ${record.floor}, Rack: ${record.rack}\nPrevious: ${record.previous}, Next: ${record.next}`, "matched");
       } else {
-        setStatus(`⚠️ Wrong sequence! Current: ${record.qr}, Expected previous: ${record.previous}`, "not-matched");
+        setStatus(`❌ Wrong sequence!\nCurrent QR: ${record.qr}\nExpected previous: ${record.previous}\nExpected next: ${record.next}`, "not-matched");
       }
     }
 
-    // Update status message
-    function setStatus(msg, statusClass) {
-      let statusEl = document.getElementById("statusMsg");
+    function setStatus(msg, cls) {
+      const statusEl = document.getElementById("statusMsg");
       statusEl.innerText = msg;
-      statusEl.className = "status " + statusClass;
+      statusEl.className = "status " + cls;
     }
   </script>
 </body>
