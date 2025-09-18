@@ -1,43 +1,44 @@
-{
-  "storage": [
-    [
-      {
-        "floor": 1,
-        "rack": 1,
-        "previous": null,
-        "current": "QR101",
-        "next": "QR102"
-      },
-      {
-        "floor": 1,
-        "rack": 1,
-        "previous": "QR101",
-        "current": "QR102",
-        "next": "QR103"
-      },
-      {
-        "floor": 1,
-        "rack": 2,
-        "previous": "QR102",
-        "current": "QR103",
-        "next": null
-      }
-    ],
-    [
-      {
-        "floor": 2,
-        "rack": 1,
-        "previous": null,
-        "current": "QR201",
-        "next": "QR202"
-      },
-      {
-        "floor": 2,
-        "rack": 2,
-        "previous": "QR201",
-        "current": "QR202",
-        "next": null
-      }
-    ]
-  ]
-}
+[
+  {
+    "floor": 1,
+    "rack": "A1",
+    "qr": "QR001",
+    "previous": null,
+    "next": "QR002"
+  },
+  {
+    "floor": 1,
+    "rack": "A2",
+    "qr": "QR002",
+    "previous": "QR001",
+    "next": "QR003"
+  },
+  {
+    "floor": 1,
+    "rack": "A3",
+    "qr": "QR003",
+    "previous": "QR002",
+    "next": "QR004"
+  },
+  {
+    "floor": 2,
+    "rack": "B1",
+    "qr": "QR004",
+    "previous": "QR003",
+    "next": "QR005"
+  },
+  {
+    "floor": 2,
+    "rack": "B2",
+    "qr": "QR005",
+    "previous": "QR004",
+    "next": "QR006"
+  },
+  {
+    "floor": 2,
+    "rack": "B3",
+    "qr": "QR006",
+    "previous": "QR005",
+    "next": null
+  }
+]
