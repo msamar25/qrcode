@@ -1,44 +1,20 @@
 [
-  {
-    "floor": 1,
-    "rack": "A1",
-    "qr": "QR001",
-    "previous": null,
-    "next": "QR002"
-  },
-  {
-    "floor": 1,
-    "rack": "A2",
-    "qr": "QR002",
-    "previous": "QR001",
-    "next": "QR003"
-  },
-  {
-    "floor": 1,
-    "rack": "A3",
-    "qr": "QR003",
-    "previous": "QR002",
-    "next": "QR004"
-  },
-  {
-    "floor": 2,
-    "rack": "B1",
-    "qr": "QR004",
-    "previous": "QR003",
-    "next": "QR005"
-  },
-  {
-    "floor": 2,
-    "rack": "B2",
-    "qr": "QR005",
-    "previous": "QR004",
-    "next": "QR006"
-  },
-  {
-    "floor": 2,
-    "rack": "B3",
-    "qr": "QR006",
-    "previous": "QR005",
-    "next": null
-  }
+  { "floor": 1, "rack": "A1", "qr": "QR001", "previous": null, "next": "QR002" },
+  { "floor": 1, "rack": "A2", "qr": "QR002", "previous": "QR001", "next": "QR003" },
+  { "floor": 1, "rack": "A3", "qr": "QR003", "previous": "QR002", "next": "QR004" },
+  { "floor": 1, "rack": "A4", "qr": "QR004", "previous": "QR003", "next": "QR005" },
+  
+  { "floor": 2, "rack": "B1", "qr": "QR005", "previous": "QR004", "next": "QR006" },
+  { "floor": 2, "rack": "B2", "qr": "QR006", "previous": "QR005", "next": "QR007" },
+  { "floor": 2, "rack": "B3", "qr": "QR007", "previous": "QR006", "next": "QR008" },
+  { "floor": 2, "rack": "B4", "qr": "QR008", "previous": "QR007", "next": "QR009" },
+  
+  { "floor": 3, "rack": "C1", "qr": "QR009", "previous": "QR008", "next": "QR010" },
+  { "floor": 3, "rack": "C2", "qr": "QR010", "previous": "QR009", "next": "QR011" },
+  { "floor": 3, "rack": "C3", "qr": "QR011", "previous": "QR010", "next": "QR012" },
+  { "floor": 3, "rack": "C4", "qr": "QR012", "previous": "QR011", "next": "QR013" },
+  
+  { "floor": 3, "rack": "C5", "qr": "QR013", "previous": "QR012", "next": "QR014" },
+  { "floor": 3, "rack": "C6", "qr": "QR014", "previous": "QR013", "next": "QR015" },
+  { "floor": 3, "rack": "C7", "qr": "QR015", "previous": "QR014", "next": null }
 ]
