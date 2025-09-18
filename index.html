@@ -26,24 +26,43 @@
   <script>
     let qrScanner;
     let scanning = false;
-    let jsonData = [];
+    let flatData = [];
+    let scanHistory = []; // keep last 2 scans
 
-    // Load JSON data
+    // Load JSON and flatten
     fetch("https://msamar25.github.io/qrcode/storage.json")
       .then(res => res.json())
       .then(data => {
-        jsonData = data;
-        console.log("JSON loaded:", jsonData);
+        flatData = flattenJson(data);
+        console.log("Flattened JSON:", flatData);
       })
       .catch(err => console.error("Failed to load storage.json:", err));
+
+    function flattenJson(data) {
+      if (data.floors) {
+        let result = [];
+        data.floors.forEach(floor => {
+          floor.racks.forEach(rack => {
+            result.push({
+              floor: floor.floor,
+              rack: rack.rack,
+              qr: rack.qr,
+              previous: rack.previous,
+              next: rack.next
+            });
+          });
+        });
+        return result;
+      }
+      return data; // already flat
+    }
 
     // Start scanning
     document.getElementById("startBtn").addEventListener("click", () => {
       if (!scanning) {
         qrScanner = new Html5Qrcode("reader");
-
         qrScanner.start(
-          { facingMode: { exact: "environment" } }, // try rear camera
+          { facingMode: "environment" },
           { fps: 10, qrbox: 250 },
           qrCodeSuccess,
           qrCodeError
@@ -52,17 +71,8 @@
           document.getElementById("stopBtn").disabled = false;
           document.getElementById("startBtn").disabled = true;
         }).catch(err => {
-          console.warn("Rear camera not available, trying front:", err);
-          qrScanner.start(
-            { facingMode: "user" }, // fallback to front camera
-            { fps: 10, qrbox: 250 },
-            qrCodeSuccess,
-            qrCodeError
-          ).then(() => {
-            scanning = true;
-            document.getElementById("stopBtn").disabled = false;
-            document.getElementById("startBtn").disabled = true;
-          }).catch(e => console.error("Camera start error:", e));
+          console.error("Camera error:", err);
+          alert("⚠️ Please allow camera permission and reload.");
         });
       }
     });
@@ -78,9 +88,14 @@
       }
     });
 
-    // On QR success
+    // Success handler
     function qrCodeSuccess(decodedText) {
       document.getElementById("qr-data").innerText = decodedText;
+
+      // store last 2 scans
+      scanHistory.push(decodedText);
+      if (scanHistory.length > 2) scanHistory.shift();
+
       validateQR(decodedText);
     }
 
@@ -88,24 +103,54 @@
       console.log("QR Error:", errorMessage);
     }
 
-    // Validate scanned QR against JSON
+    // Validation logic
     function validateQR(scanned) {
-      let record = jsonData.find(item => item.qr === scanned);
+      let record = flatData.find(item => item.qr === scanned);
 
-      if (record) {
+      if (!record) {
+        document.getElementById("qr-data").className = "not-matched";
+        document.getElementById("validation").innerText = "❌ QR not found in JSON.";
+        return;
+      }
+
+      // If fewer than 2 scans, just acknowledge
+      if (scanHistory.length < 2) {
         document.getElementById("qr-data").className = "matched";
         document.getElementById("validation").innerHTML =
-          `<b>Matched!</b><br>
-           Floor: ${record.floor}<br>
-           Rack: ${record.rack}<br>
-           Previous: ${record.previous}<br>
-           Next: ${record.next}`;
-      } else {
-        document.getElementById("qr-data").className = "not-matched";
-        document.getElementById("validation").innerText = "QR Code not found in JSON data.";
+          `✅ First scans recorded.<br>
+           Floor: ${record.floor}, Rack: ${record.rack}`;
+        return;
+      }
+
+      // Get previous scan
+      let prevScan = scanHistory[scanHistory.length - 2];
+      let prevRecord = flatData.find(item => item.qr === prevScan);
+
+      if (prevRecord) {
+        if (prevRecord.next === scanned) {
+          // forward sequence
+          document.getElementById("qr-data").className = "matched";
+          document.getElementById("validation").innerHTML =
+            `✅ Correct Forward Sequence!<br>
+             ${prevRecord.qr} → ${scanned}<br>
+             Floor: ${record.floor}, Rack: ${record.rack}`;
+        } else if (prevRecord.previous === scanned) {
+          // backward sequence
+          document.getElementById("qr-data").className = "matched";
+          document.getElementById("validation").innerHTML =
+            `✅ Correct Backward Sequence!<br>
+             ${prevRecord.qr} ← ${scanned}<br>
+             Floor: ${record.floor}, Rack: ${record.rack}`;
+        } else {
+          // wrong sequence
+          document.getElementById("qr-data").className = "not-matched";
+          document.getElementById("validation").innerHTML =
+            `❌ Wrong Sequence!<br>
+             Expected: ${prevRecord.previous || "None"} ← ${prevRecord.qr} → ${prevRecord.next || "None"}<br>
+             Got: ${scanned}`;
+        }
       }
     }
   </script>
 </body>
 </html>
-
