@@ -3,20 +3,20 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>QR Code Scanner with JSON Validation</title>
+  <title>QR Code Scanner - Enhanced</title>
   <script src="https://unpkg.com/html5-qrcode"></script>
   <style>
     body { font-family: Arial, sans-serif; text-align: center; padding: 20px; }
     #reader { width: 320px; margin: 20px auto; border: 2px solid #ddd; }
     .matched { color: green; font-weight: bold; }
     .not-matched { color: red; font-weight: bold; }
-    .status { margin-top: 15px; font-size: 16px; }
+    .status { margin-top: 15px; font-size: 16px; white-space: pre-line; }
     #scans { margin-top: 20px; text-align: left; display: inline-block; }
     #scans li { margin-bottom: 6px; }
   </style>
 </head>
 <body>
-  <h1>QR Code Scanner</h1>
+  <h1>QR Code Scanner - Enhanced</h1>
 
   <button id="startBtn">Start Camera Scan</button>
   <button id="stopBtn" disabled>Stop Camera Scan</button>
@@ -35,7 +35,8 @@
     let jsonData = [];
     let lastTwo = []; // last 2 scans
     let lastScanTime = 0;
-    const scanDelay = 30000; // 30 seconds
+    const scanDelay = 10000; // 30 seconds
+    let scannedSet = new Set(); // store already scanned QRs to avoid duplicates
 
     // Load JSON data
     fetch("https://msamar25.github.io/qrcode/storage.json")
@@ -78,15 +79,23 @@
       const now = Date.now();
       if (now - lastScanTime < scanDelay) return; // ignore if within 30 seconds
       lastScanTime = now;
+
+      if (scannedSet.has(decodedText)) {
+        setStatus(`⚠️ You are scanning the same QR again: ${decodedText}`, "not-matched");
+        return;
+      }
+
       processScan(decodedText);
     }
 
     function qrCodeError(errorMessage) { console.log("QR Error:", errorMessage); }
 
-    // Process scan and update history
+    // Process scan & update history
     function processScan(decodedText) {
+      scannedSet.add(decodedText);
       addToHistory(decodedText);
       validateQR(decodedText);
+      saveScan(decodedText); // optional: save to GitHub JSON
     }
 
     function addToHistory(text) {
@@ -98,10 +107,14 @@
       document.getElementById("scans").prepend(li);
     }
 
-    // Validate QR sequence and display full rack details
+    // Validate QR sequence & display full rack details
     function validateQR(scanned) {
       const record = jsonData.find(item => item.qr === scanned);
-      if (!record) return setStatus("❌ QR not found in JSON.", "not-matched");
+
+      if (!record) {
+        setStatus(`❌ Scanning a QR which does not belong to this institution: ${scanned}`, "not-matched");
+        return;
+      }
 
       if (lastTwo.length < 2) {
         return setStatus(`✅ First scan: ${scanned}\nFloor: ${record.floor}, Rack: ${record.rack}`, "matched");
@@ -110,7 +123,9 @@
       const prevScan = lastTwo[lastTwo.length - 2];
       const prevRecord = jsonData.find(item => item.qr === prevScan);
 
-      if (!prevRecord) return setStatus("❌ Previous QR not found.", "not-matched");
+      if (!prevRecord) {
+        return setStatus(`❌ Previous QR not found in JSON`, "not-matched");
+      }
 
       if (record.previous === prevScan) {
         setStatus(`✅ Forward Sequence OK!\nFloor: ${record.floor}, Rack: ${record.rack}\nPrevious: ${record.previous}, Next: ${record.next}`, "matched");
@@ -126,6 +141,7 @@
       statusEl.innerText = msg;
       statusEl.className = "status " + cls;
     }
+
   </script>
 </body>
 </html>
