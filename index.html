@@ -1,116 +1,109 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>QR Code Scanner with JSON Validation</title>
   <script src="https://unpkg.com/html5-qrcode/minified/html5-qrcode.min.js"></script>
   <style>
-    #reader { width: 300px; margin-bottom: 20px; }
+    body { font-family: Arial, sans-serif; text-align: center; padding: 20px; }
+    #reader { width: 300px; margin: 20px auto; }
     .matched { color: green; font-weight: bold; }
     .not-matched { color: red; font-weight: bold; }
-    .warning { color: orange; font-weight: bold; }
     #qr-data { font-size: 18px; }
   </style>
 </head>
 <body>
-  <h1>QR Code Scanner with JSON Data</h1>
+  <h1>QR Code Scanner</h1>
 
   <button id="startBtn">Start Scanning</button>
   <button id="stopBtn" disabled>Stop Scanning</button>
 
   <div id="reader"></div>
   <p>Last Scanned QR Code: <span id="qr-data" class="not-matched">None</span></p>
-  <p id="rack-info"></p>
+  <p id="validation"></p>
 
   <script>
-    let qrCodeScanner;
+    let qrScanner;
     let scanning = false;
-    let storageData = [];   // JSON data from storage.json
-    let lastTwoScans = [];  // Store last two scanned QRs
+    let jsonData = [];
 
-    // 🔹 Load JSON file (replace with your hosted link)
-    fetch("https://raw.githubusercontent.com/msamar25/qrcode/refs/heads/main/storage.json")
-      .then(response => response.json())
+    // Load JSON data
+    fetch("https://msamar25.github.io/qrcode/storage.json")
+      .then(res => res.json())
       .then(data => {
-        storageData = data.storage.flat(); // flatten floors into one array
-        console.log("Loaded JSON data:", storageData);
+        jsonData = data;
+        console.log("JSON loaded:", jsonData);
       })
-      .catch(err => console.error("Error loading JSON:", err));
+      .catch(err => console.error("Failed to load storage.json:", err));
 
     // Start scanning
-    document.getElementById('startBtn').addEventListener('click', function() {
+    document.getElementById("startBtn").addEventListener("click", () => {
       if (!scanning) {
-        qrCodeScanner = new Html5Qrcode("reader");
-        qrCodeScanner.start(
-          { facingMode: "environment" },
+        qrScanner = new Html5Qrcode("reader");
+
+        qrScanner.start(
+          { facingMode: { exact: "environment" } }, // try rear camera
           { fps: 10, qrbox: 250 },
-          qrCodeSuccessCallback,
-          qrCodeErrorCallback
+          qrCodeSuccess,
+          qrCodeError
         ).then(() => {
           scanning = true;
-          document.getElementById('stopBtn').disabled = false;
-          document.getElementById('startBtn').disabled = true;
-        }).catch(err => console.log("QR start error:", err));
+          document.getElementById("stopBtn").disabled = false;
+          document.getElementById("startBtn").disabled = true;
+        }).catch(err => {
+          console.warn("Rear camera not available, trying front:", err);
+          qrScanner.start(
+            { facingMode: "user" }, // fallback to front camera
+            { fps: 10, qrbox: 250 },
+            qrCodeSuccess,
+            qrCodeError
+          ).then(() => {
+            scanning = true;
+            document.getElementById("stopBtn").disabled = false;
+            document.getElementById("startBtn").disabled = true;
+          }).catch(e => console.error("Camera start error:", e));
+        });
       }
     });
 
     // Stop scanning
-    document.getElementById('stopBtn').addEventListener('click', function() {
-      if (qrCodeScanner && scanning) {
-        qrCodeScanner.stop().then(() => {
+    document.getElementById("stopBtn").addEventListener("click", () => {
+      if (qrScanner && scanning) {
+        qrScanner.stop().then(() => {
           scanning = false;
-          document.getElementById('startBtn').disabled = false;
-          document.getElementById('stopBtn').disabled = true;
-        }).catch(err => console.log("QR stop error:", err));
+          document.getElementById("startBtn").disabled = false;
+          document.getElementById("stopBtn").disabled = true;
+        }).catch(err => console.error("Stop error:", err));
       }
     });
 
-    // On successful scan
-    function qrCodeSuccessCallback(decodedText) {
+    // On QR success
+    function qrCodeSuccess(decodedText) {
       document.getElementById("qr-data").innerText = decodedText;
-      checkQrPlacement(decodedText);
+      validateQR(decodedText);
     }
 
-    // Error callback
-    function qrCodeErrorCallback(errorMessage) {
-      console.log("QR scan error:", errorMessage);
+    function qrCodeError(errorMessage) {
+      console.log("QR Error:", errorMessage);
     }
 
-    // Compare scanned QR with JSON & validate placement
-    function checkQrPlacement(scannedData) {
-      let match = storageData.find(item => item.qr === scannedData);
+    // Validate scanned QR against JSON
+    function validateQR(scanned) {
+      let record = jsonData.find(item => item.qr === scanned);
 
-      if (!match) {
+      if (record) {
+        document.getElementById("qr-data").className = "matched";
+        document.getElementById("validation").innerHTML =
+          `<b>Matched!</b><br>
+           Floor: ${record.floor}<br>
+           Rack: ${record.rack}<br>
+           Previous: ${record.previous}<br>
+           Next: ${record.next}`;
+      } else {
         document.getElementById("qr-data").className = "not-matched";
-        document.getElementById("qr-data").innerText = `Not Found: ${scannedData}`;
-        document.getElementById("rack-info").innerText = "";
-        return;
+        document.getElementById("validation").innerText = "QR Code not found in JSON data.";
       }
-
-      // ✅ Add to scan history
-      lastTwoScans.push(scannedData);
-      if (lastTwoScans.length > 2) {
-        lastTwoScans.shift(); // Keep only last 2 scans
-      }
-
-      // Check placement validity
-      let statusMsg = `📍 Floor: ${match.floor}, Rack: ${match.rack}, Prev: ${match.previous}, Next: ${match.next}`;
-      let statusClass = "matched";
-
-      if (lastTwoScans.length === 2) {
-        let prevScan = lastTwoScans[0];
-        let currentScan = lastTwoScans[1];
-
-        if (match.previous !== prevScan) {
-          statusMsg += ` ⚠️ Wrong placement! Expected previous: ${match.previous}, but scanned after: ${prevScan}`;
-          statusClass = "warning";
-        }
-      }
-
-      document.getElementById("qr-data").className = statusClass;
-      document.getElementById("qr-data").innerText = `Matched: ${scannedData}`;
-      document.getElementById("rack-info").innerText = statusMsg;
     }
   </script>
 </body>
